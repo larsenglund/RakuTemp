@@ -207,7 +207,7 @@ void handleRoot() {
   );
   server.sendContent(websocketPageBody);
   server.sendContent(
-    "<p>You may want to <a href='/wifi'>config the wifi connection</a> or <a href='/update'>update the firmware</a> or <a href='/'>refresh this page</a></p>"
+    "<p>You may want to <a href='/wifi'>config the wifi connection</a>, <a href='/'>refresh this page</a> or <a href='/update'>update the firmware</a>.</p>"
     "</body></html>"
   );
   if (server.client().localIP() == apIP) {

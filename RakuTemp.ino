@@ -147,9 +147,9 @@ void setup() {
   server.on("/wifisave", handleWifiSave);
   server.on("/generate_204", handleRoot);  //Android captive portal. Maybe not needed. Might be handled by notFound handler.
   server.on("/fwlink", handleRoot);  //Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
+  httpUpdater.setup(&server);
   server.onNotFound ( handleNotFound );
   server.serveStatic("/", SPIFFS, "/", "max-age=86400");
-  httpUpdater.setup(&server);
   server.begin(); // Web server start
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
