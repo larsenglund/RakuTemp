@@ -8,15 +8,20 @@ html * {
 </style>
 <script>
 var waitingForData = false;
-var numData = 0;
-var dataIdx = 0;
-var numChunks = 0;
-var chunkIdx = 0;
-var numDataAdded = 0;
+var numData1 = 0;
+var dataIdx1 = 0;
+var numData2 = 0;
+var dataIdx2 = 0;
+//var numChunks = 0;
+var chunkIdx1 = 0;
+var chunkIdx2 = 0;
+var numData1Added = 0;
+var numData2Added = 0;
 var MAX_SAMPLES = 2048;
 var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);
 connection.binaryType = 'arraybuffer';
 var s1 = new Uint16Array(MAX_SAMPLES);
+var s2 = new Uint16Array(MAX_SAMPLES);
 connection.onopen = function () {  
   connection.send('Connect ' + new Date()); 
 }; 
@@ -30,25 +35,46 @@ connection.onmessage = function (e) {
   if (typeof(e.data) == 'object') {
     var data = e.data;
     var dv = new DataView(data);
-    /*var idx = dataIdx - numData;
+    /*var idx = dataIdx1 - numData1;
     if (idx < 0) idx += MAX_SAMPLES;
-    for (var n=0; n<numData; n++) {
+    for (var n=0; n<numData1; n++) {
       var tmp = dv.getUint16(idx*2, true);
       console.log("idx " + idx + ": " + tmp);
       if (++idx >= MAX_SAMPLES) idx = 0;
     }*/
-    for (var n=0; n<MAX_SAMPLES/2; n++) {
-      s1[chunkIdx++] = dv.getUint16(n*2, true);
+    if (chunkIdx1 < MAX_SAMPLES) {
+      for (var n=0; n<MAX_SAMPLES/2; n++) {
+        s1[chunkIdx1++] = dv.getUint16(n*2, true);
+      }
     }
-    if (chunkIdx == MAX_SAMPLES) {
+    else {
+      for (var n=0; n<MAX_SAMPLES/2; n++) {
+        s2[chunkIdx2++] = dv.getUint16(n*2, true);
+      }
+    }
+    if (chunkIdx2 == MAX_SAMPLES) {
       console.log('All data received');
-      var idx = dataIdx - numData;
+      
+      var idx = dataIdx1 - numData1;
       if (idx < 0) idx += MAX_SAMPLES;
-      for (var n=0; n<numData; n++) {
-        var tmp = s1[idx];
-        console.log("idx " + idx + ": " + tmp);
+      for (var n=0; n<numData1; n++) {
+        cfg.data.labels.push(numData1Added);
+        cfg.data.datasets[0].data.push(s1[idx]);
+        numData1Added++;
         if (++idx >= MAX_SAMPLES) idx = 0;
       }
+      myChart.update();
+
+      idx = dataIdx2 - numData2;
+      if (idx < 0) idx += MAX_SAMPLES;
+      for (var n=0; n<numData2; n++) {
+        cfg2.data.labels.push(numData2Added);
+        cfg2.data.datasets[0].data.push(s2[idx]);
+        numData2Added++;
+        if (++idx >= MAX_SAMPLES) idx = 0;
+      }
+      myChart2.update();
+      
       waitingForData = false;
     }
   }
@@ -60,21 +86,16 @@ connection.onmessage = function (e) {
       waitingForData = true;
       cfg.data.labels = [];
       cfg.data.datasets[0].data = [];
-      dataIdx = parseInt(tmp[1]);
-      numData = parseInt(tmp[2]);
+      dataIdx1 = parseInt(tmp[1]);
+      numData1 = parseInt(tmp[2]);
+      dataIdx2 = parseInt(tmp[3]);
+      numData2 = parseInt(tmp[4]);
+      chunkIdx1 = 0;
+      chunkIdx2 = 0;
+      var _max = parseInt(tmp[5]);
+      console.log('MAX_SAMPLES - ESP: ' + _max + ' WEB: ' + MAX_SAMPLES);
     }
-    /*else if (tmp.length == 1) {
-      var _temp = parseInt(tmp[0]);
-      cfg.data.labels.push(numDataAdded);
-      cfg.data.datasets[0].data.push(_temp);
-      numDataAdded++;
-      if (numDataAdded == numData) {
-        console.log('All data received!');
-        myChart.update();
-        waitingForData = false;
-      }
-    }*/
-    else if (tmp.length == 2) {
+    else {
       //console.log('Server: ', e.data);
       var _temp = parseInt(tmp[0]);
       var _millis = parseInt(tmp[1]);
@@ -84,18 +105,26 @@ connection.onmessage = function (e) {
       else {
         console.log(_temp);
         document.getElementById('a').innerHTML = _temp;
-        //document.getElementById('b').value = _millis;
+        
         if(cfg.data.datasets[0].data.length == MAX_SAMPLES){
-              //myChart.removeData();
-              cfg.data.datasets[0].data.shift();
-              cfg.data.labels.shift();
+          cfg.data.datasets[0].data.shift();
+          cfg.data.labels.shift();
         }
-        //myChart.addData([temp], 'RakuTemp');
-        //cfg.data.labels.push(_millis);
-        cfg.data.labels.push(numDataAdded);
+        cfg.data.labels.push(numData1Added);
         cfg.data.datasets[0].data.push(_temp);
-        numDataAdded++;
+        numData1Added++;
         myChart.update();
+
+        if (tmp.length > 2) {
+          if(cfg2.data.datasets[0].data.length == MAX_SAMPLES){
+            cfg2.data.datasets[0].data.shift();
+            cfg2.data.labels.shift();
+          }
+          cfg2.data.labels.push(numData2Added);
+          cfg2.data.datasets[0].data.push(_temp);
+          numData2Added++;
+          myChart2.update();
+        }
       }
     }
   }
@@ -105,7 +134,8 @@ connection.onmessage = function (e) {
 const char* websocketPageBody = R"(
 <center style='font-size: 200%;'>
 RakuTemp <b><span id='a'></span></b><br/>
-<canvas id='myChart' width='400' height='400'></canvas>
+<canvas id='myChart' width='400' height='240'></canvas>
+<canvas id='myChart2' width='400' height='150'></canvas>
 </center><br/>
 <script>
 var ctx = document.getElementById('myChart');
@@ -115,16 +145,37 @@ var cfg = {
         labels: [],
         datasets: [{
             radius: 0,
-            fillColor : 'rgba(252,233,79,0.5)',
-            strokeColor : 'rgba(82,75,25,1)',
-            label: 'RakuTemp',
+            backgroundColor : 'rgba(243,134,48,0.5)',
+            borderColor : 'rgba(243,134,48,1)',
+            borderWidth : 2,
+            label: '68min',
             data: []
         }]
     },
     options: {
-      legend: {
-            display: false
-         },
+      scales:
+        {
+            xAxes: [{
+                display: false
+            }]
+        }
+    }
+};
+var ctx2 = document.getElementById('myChart2');
+var cfg2 = {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            radius: 0,
+            backgroundColor : 'rgba(167,219,216,0.5)',
+            borderColor : 'rgba(167,219,216,1)',
+            borderWidth : 2,
+            label: '17h',
+            data: []
+        }]
+    },
+    options: {
       scales:
         {
             xAxes: [{
@@ -134,6 +185,7 @@ var cfg = {
     }
 };
 var myChart = new Chart(ctx, cfg);
+var myChart2 = new Chart(ctx2, cfg2);
 </script>)";
 
 /** Handle root or redirect to captive portal */
@@ -154,15 +206,15 @@ void handleRoot() {
     "</head><body>"
   );
   server.sendContent(websocketPageBody);
+  server.sendContent(
+    "<p>You may want to <a href='/wifi'>config the wifi connection</a> or <a href='/update'>update the firmware</a> or <a href='/'>refresh this page</a></p>"
+    "</body></html>"
+  );
   if (server.client().localIP() == apIP) {
     server.sendContent(String("<p>You are connected through the soft AP: ") + softAP_ssid + "</p>");
   } else {
     server.sendContent(String("<p>You are connected through the wifi network: ") + ssid + "</p>");
   }
-  server.sendContent(
-    "<p>You may want to <a href='/wifi'>config the wifi connection</a> or <a href='/update'>update the firmware</a></p>"
-    "</body></html>"
-  );
   server.client().stop(); // Stop is needed because we sent no content length
 }
 

@@ -29,8 +29,8 @@ int num_samples_1 = 0;
 int sample_idx_2 = 0;
 int num_samples_2 = 0;
 #define MAX_SAMPLES 2048
-uint16_t samples2s[MAX_SAMPLES];
-uint16_t samples60s[MAX_SAMPLES];
+uint16_t samples_1[MAX_SAMPLES];
+uint16_t samples_2[MAX_SAMPLES];
 
 
 /*
@@ -87,19 +87,21 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
   case WStype_CONNECTED: {
     IPAddress ip = webSocket.remoteIP(num);
     Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-    webSocket.sendTXT(num, String("D") + " " + sample_idx_1 + " " + num_samples_1 + " " + MAX_SAMPLES);
+    webSocket.sendTXT(num, String("D") + " " + sample_idx_1 + " " + num_samples_1 + " " + sample_idx_2 + " " + num_samples_2 + " " + MAX_SAMPLES);
     /*int idx = sample_idx_1 - num_samples_1;
     if (idx < 0) idx = MAX_SAMPLES + idx;
     for (int n=0; n<num_samples_1; n++) {
-       webSocket.sendTXT(num, String("") + samples2s[idx]);
+       webSocket.sendTXT(num, String("") + samples_1[idx]);
        idx++;
        if (idx >= MAX_SAMPLES) {
         idx = 0;
        }
     }*/
     Serial.println("Sending binary");
-    webSocket.sendBIN(num, (uint8_t *) &samples2s[0], MAX_SAMPLES*2/2);
-    webSocket.sendBIN(num, (uint8_t *) &samples2s[MAX_SAMPLES/2], MAX_SAMPLES*2/2);
+    webSocket.sendBIN(num, (uint8_t *) &samples_1[0], MAX_SAMPLES*2/2);
+    webSocket.sendBIN(num, (uint8_t *) &samples_1[MAX_SAMPLES/2], MAX_SAMPLES*2/2);
+    webSocket.sendBIN(num, (uint8_t *) &samples_2[0], MAX_SAMPLES*2/2);
+    webSocket.sendBIN(num, (uint8_t *) &samples_2[MAX_SAMPLES/2], MAX_SAMPLES*2/2);
     Serial.println("Binary sent");
     }
     break;
@@ -157,6 +159,7 @@ void setup() {
   loadCredentials(); // Load WLAN credentials from network
   connect = strlen(ssid) > 0; // Request WLAN connect if there is a SSID
   sampleTimestamp1 = millis() + sample_time_1;
+  sampleTimestamp2 = millis() + sample_time_2;
 
   pinMode(LED_BUILTIN, OUTPUT);
   for (int n=0; n<5; n++) {
@@ -226,17 +229,31 @@ void loop() {
     
     double c = thermocouple.readCelsius();
     unsigned int c_millis = millis();
-    samples2s[sample_idx_1] = (uint16_t)c;
-    num_samples_1++;
-    if (num_samples_1 > MAX_SAMPLES) num_samples_1 = MAX_SAMPLES;
-    sample_idx_1++;
-    if (sample_idx_1 >= MAX_SAMPLES) sample_idx_1 = 0;
+    
     if (isnan(c)) {
       Serial.println("Something wrong with thermocouple!");
     } else {
+      samples_1[sample_idx_1] = (uint16_t)c;
+      if (++num_samples_1 > MAX_SAMPLES) num_samples_1 = MAX_SAMPLES;
+      if (++sample_idx_1 >= MAX_SAMPLES) sample_idx_1 = 0;
+  
+      bool sendTemp2 = false;
+      if (millis() > sampleTimestamp2) {
+        samples_2[sample_idx_2] = (uint16_t)c;
+        if (++num_samples_2 > MAX_SAMPLES) num_samples_2 = MAX_SAMPLES;
+        if (++sample_idx_2 >= MAX_SAMPLES) sample_idx_2 = 0;
+        sampleTimestamp2 = millis() + sample_time_2;
+        sendTemp2 = true;
+      }
+
       Serial.print("C = "); 
       Serial.println(c);
-      webSocket.broadcastTXT(String("") + c + " " + c_millis);
+      if (sendTemp2) {
+        webSocket.broadcastTXT(String("") + c + " " + c_millis + " 2");
+      }
+      else {
+        webSocket.broadcastTXT(String("") + c + " " + c_millis);
+      }
     }
     sampleTimestamp1 = millis() + sample_time_1;
   } 
