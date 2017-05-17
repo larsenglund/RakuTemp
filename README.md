@@ -16,6 +16,6 @@ Mobile screenshot:
 + Enslosure: https://www.aliexpress.com/item/J34-Free-Shipping-Waterproof-Plastic-Electronic-Project-Box-Case-Enclosure-2-56-L-x-2-28/32579201101.html
 + Some wires & hot glue :)
 
-Hardware before screwing on the lid and "sealing" with hot glue:
+Hardware before screwing on the lid and "sealing" with hot glue. Black tape on WeMos and MAX31855 breakout to prevent shorting anything on the PCB:s
 
 <a href="http://i68.tinypic.com/25r2fd1.jpg"><img src="http://i68.tinypic.com/25r2fd1.jpg" width="600" ></a>
