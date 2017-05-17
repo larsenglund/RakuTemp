@@ -15,3 +15,7 @@ Mobile screenshot:
 + K-type thermocouple: https://www.aliexpress.com/item/Newest-Style-Best-Price-High-Temperature-100-To-1250-Degree-Thermocouple-K-Type-100mm-Stainless-Steel/32635321141.html
 + Enslosure: https://www.aliexpress.com/item/J34-Free-Shipping-Waterproof-Plastic-Electronic-Project-Box-Case-Enclosure-2-56-L-x-2-28/32579201101.html
 + Some wires & hot glue :)
+
+Hardware before screwing on the lid and "sealing" with hot glue:
+
+<a href="http://i68.tinypic.com/25r2fd1.jpg"><img src="http://i68.tinypic.com/25r2fd1.jpg" width="600" ></a>
